@@ -1,0 +1,8 @@
+version: '3.4'
+
+services:
+  dockerregistryui:
+    image: ${DOCKER_REGISTRY-}dockerregistryui
+    build:
+      context: .
+      dockerfile: DockerRegistryUI/Dockerfile

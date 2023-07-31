@@ -1,0 +1,45 @@
+﻿@page "/webhooks"
+@using DockerRegistryUI.Controllers;
+@using static DockerRegistryUI.Pages.RepositoryList;
+
+<h3>Webhook List</h3>
+<WebhookList @ref=webhookList LoadStatus="WebhooksLoadStatus"></WebhookList>
+
+@code {
+    public List<Webhook> Webhooks { get; } = new();
+
+    [Inject]
+    public WebhookRepository WebhooksRepository { get; set; }
+    public WebhookList webhookList { get; set; }
+
+    public LoadStatus WebhooksLoadStatus { get; set; } = LoadStatus.Pending;
+
+    protected override void OnAfterRender(bool firstRender)
+    {
+        base.OnAfterRender(firstRender);
+
+        if (firstRender)
+        {
+            LoadWebhooks();
+        }
+    }
+
+    private void LoadWebhooks()
+    {
+        try
+        {
+            WebhooksLoadStatus = LoadStatus.InProgress;
+            StateHasChanged();
+
+            var webhooks = WebhooksRepository.GetWebhooks();
+            webhookList.SetWebhooks(webhooks);
+            WebhooksLoadStatus = LoadStatus.Succeeded;
+            StateHasChanged();
+        }
+        catch (Exception ex)
+        {
+            WebhooksLoadStatus = LoadStatus.Failed;
+            StateHasChanged();
+        }
+    }
+}

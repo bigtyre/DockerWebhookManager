@@ -1,0 +1,83 @@
+﻿@page "/repositories/"
+@using DockerRegistryUI.Data;
+
+<h3>Repository List</h3>
+@switch (RepositoryLoadStatus)
+{
+
+    case LoadStatus.InProgress:
+        <span>Loading...</span>
+        break;
+
+    case LoadStatus.Failed:
+        <span class="text-danger">Failed to load repositories.</span>
+        break;
+
+    case LoadStatus.Succeeded:
+        <table class="table table-striped">
+            <thead>
+                <tr>
+                    <th>Repository Name</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var repository in Repositories)
+                {
+                    <tr>
+                        <td>
+                            <a href="repositories/@(repository.Name)/">@repository.Name</a>
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+        break;
+}
+
+@code {
+    [Inject]
+    internal RegistryService RegistryService { get; set; }
+
+    private List<DockerRepository> Repositories { get; } = new();
+
+
+    public LoadStatus RepositoryLoadStatus { get; set; }
+    public enum LoadStatus
+    {
+        Pending,
+        InProgress,
+        Succeeded,
+        Failed
+    }
+
+    protected override async Task OnInitializedAsync()
+    {
+        await base.OnInitializedAsync();
+
+        await LoadRepositoriesAsync();
+    }
+
+    private async Task LoadRepositoriesAsync()
+    {
+        if (RepositoryLoadStatus == LoadStatus.InProgress) return;
+
+        try
+        {
+            RepositoryLoadStatus = LoadStatus.InProgress;
+            StateHasChanged();
+
+            var repositories = await RegistryService.GetRepositoriesAsync();
+            Repositories.Clear();
+            Repositories.AddRange(repositories);
+
+            RepositoryLoadStatus = LoadStatus.Succeeded;
+            StateHasChanged();
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine(ex);
+            RepositoryLoadStatus = LoadStatus.Failed;
+            StateHasChanged();
+        }
+    }
+}

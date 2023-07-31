@@ -1,0 +1,134 @@
+﻿@page "/repositories/{RepositoryName}"
+
+@using DockerRegistryUI.Controllers;
+@using DockerRegistryUI.Data;
+@using static DockerRegistryUI.Pages.RepositoryList;
+<h2>@RepositoryName</h2>
+
+<h4 style="margin-top:24px;">Webhooks</h4>
+
+<div style="border:1px solid #ccc;padding:8px;margin:4px 0;display:flex;flex-direction:row;gap:10px;margin:16px 0;background:#eaeaea">
+    <label style="padding:8px;">URL</label>
+    <input class="form-control" type="text" @bind-value="@NewWebhookUrl" style="flex:1;" />
+    <button type="submit" class="btn btn-primary" @onclick="CreateWebhook"><span class="oi oi-plus"></span> Create Webhook</button>
+</div>
+
+<WebhookList @ref="webhookList" LoadStatus="WebhookLoadStatus" />
+
+<ModalPopup @ref="modal" Message="@ModalMessage" OnDismiss="HandleDismiss" />
+
+@code {
+    [Parameter] 
+    public string? RepositoryName { get; set; }
+
+    public List<Webhook> Webhooks { get; } = new();
+    public LoadStatus WebhookLoadStatus { get; set; } = LoadStatus.Pending;
+
+    public string NewWebhookUrl { get; set; } = "";
+    public string ModalMessage { get; set; } = "";
+
+    public DateTimeOffset LastPushTime { get; set; }
+
+    private ModalPopup modal { get; set; }
+    private WebhookList webhookList { get; set; }
+
+    [Inject]
+    public RegistryService RegistryService { get; set; }
+
+    [Inject] 
+    public WebhookRepository? WebhookRepository { get; set; }
+
+    protected override async Task OnInitializedAsync()
+    {
+        await base.OnInitializedAsync();
+
+        try {
+            await LoadRepositoryDetails();
+        }
+        catch (Exception ex)
+        {
+
+        }
+
+
+    }
+
+    protected override void OnAfterRender(bool firstRender)
+    {
+        base.OnAfterRender(firstRender);
+
+        if (!firstRender) return;
+        try
+        {
+            LoadWebhooks();
+        }
+        catch (Exception ex)
+        {
+
+        }
+    }
+
+    private async Task LoadRepositoryDetails()
+    {
+        
+    }
+
+    private void LoadWebhooks()
+    {
+        try {
+            WebhookLoadStatus = LoadStatus.InProgress;
+            StateHasChanged();
+
+            var webhooks = WebhookRepository.GetWebhooksByRepositoryName(RepositoryName);
+            webhookList.SetWebhooks(webhooks);
+            WebhookLoadStatus = LoadStatus.Succeeded;
+            StateHasChanged();
+        }
+        catch (Exception ex)
+        {
+            WebhookLoadStatus = LoadStatus.Failed;
+            StateHasChanged();
+        }
+    }
+
+    private async void CreateWebhook()
+    {
+        var urlText = NewWebhookUrl;
+        
+
+        if (Uri.TryCreate(urlText, UriKind.Absolute, out var uri) is false)
+        {
+            ModalMessage = "URL is invalid.";
+            modal.Show();
+            return;
+        }
+        var webhookUrl = uri.ToString();
+
+        Console.WriteLine($"Creating webhook for {RepositoryName} with URL {webhookUrl}");
+
+        try {
+            WebhookRepository.CreateWebhook(RepositoryName, uri);
+            NewWebhookUrl = "";
+        }
+        catch (Exception ex)
+        {
+            ModalMessage = "Failed to create webhook: " + ex.Message;
+            modal.Show();
+            return;
+        }
+
+        try
+        {
+            LoadWebhooks();
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine(ex.ToString());
+        }
+    }
+
+    private void HandleDismiss()
+    {
+        modal.Hide();
+    }
+}

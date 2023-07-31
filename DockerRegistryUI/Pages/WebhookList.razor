@@ -1,0 +1,141 @@
+﻿@using DockerRegistryUI.Controllers;
+@using static DockerRegistryUI.Pages.RepositoryList;
+
+<table class="table table-bordered">
+    <thead class="thead-dark">
+        <tr>
+            <th>Repository</th>
+            <th>Url</th>
+            <th colspan="10"></th>
+        </tr>
+    </thead>
+    <tbody>
+        @switch (LoadStatus)
+        {
+            case LoadStatus.Pending:
+                <tr><td colspan="10">Webhooks have not been loaded yet. Please wait...</td></tr>
+                break;
+
+            case LoadStatus.InProgress:
+                <tr><td colspan="10">Loading webhooks...</td></tr>
+                break;
+
+            case LoadStatus.Failed:
+                <tr><td colspan="10" class="text-danger">Failed to load webhooks.</td></tr>
+                break;
+
+            case LoadStatus.Succeeded:
+                if (Webhooks.Any())
+                {
+                    foreach (var viewModel in WebhookViewModels)
+                    {
+                        var webhook = viewModel.Webhook;
+                        <tr>
+                            <td style="white-space:nowrap"><a href="repositories/@webhook.RepositoryName">@webhook.RepositoryName</a></td>
+                            <td style="width:100%">@webhook.Url</td>
+                            <td><button type="button" @onclick=@(() => viewModel.LoadCallHistory()) class="btn btn-secondary">History</button></td>
+                            <td><button type="button" @onclick=@(() => DeleteWebhook(webhook)) class="btn btn-danger">Delete</button></td>
+                        </tr>
+
+                        @if (viewModel.CallHistoryLoaded)
+                        {
+                            <tr>
+                                <td colspan="100">
+                                    @if (viewModel.CallHistory.Any())
+                                    {
+                                    <table>
+                                        <thead>
+                                            <tr>
+                                                <th>Time</th>
+                                                <th>Status Code</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            @foreach (var callHistory in viewModel.CallHistory)
+                                            {
+                                                <tr>
+                                                    <td>@callHistory.Time</td>
+                                                    <td style="padding-left:20px;">@callHistory.ResponseCode</td>
+                                                </tr>
+                                            }
+                                        </tbody>
+
+                                    </table>
+                                    }
+                                    else
+                                    {
+                                    <span>No webhook call history found.</span>
+                                    }
+                                </td>
+                            </tr>
+                        }
+                    }
+                }
+                else
+                {
+                    <tr><td colspan="10">No webhooks found</td></tr>
+                }
+                break;
+        }
+
+    </tbody>
+</table>
+
+@code {
+    List<Webhook> Webhooks { get; } = new();
+
+    List<WebhookViewModel> WebhookViewModels { get; } = new();
+
+    [Parameter]
+    public LoadStatus LoadStatus { get; set; } = LoadStatus.Pending;
+
+    public void SetWebhooks(IEnumerable<Webhook> webhooks)
+    {
+        Webhooks.Clear();
+        Webhooks.AddRange(webhooks);
+
+        var viewModels = webhooks.Select(s => new WebhookViewModel(WebhookRepository, s)).ToList();
+        WebhookViewModels.Clear();
+        WebhookViewModels.AddRange(viewModels);
+    }
+
+    [Inject]
+    public WebhookRepository WebhookRepository { get; set; }
+
+    public void DeleteWebhook(Webhook webhook)
+    {
+        WebhookRepository.DeleteWebhook(webhook.Id);
+        if (Webhooks.Contains(webhook))
+        {
+            Webhooks.Remove(webhook);
+        }
+
+        var vms = WebhookViewModels.Where(w => w.Webhook == webhook).ToList();
+        foreach (var vm in vms)
+        {
+            WebhookViewModels.Remove(vm);
+        }
+    }
+
+    public class WebhookViewModel
+    {
+        public WebhookViewModel(WebhookRepository webhookRepository, Webhook webhook)
+        {
+            WebhookRepository = webhookRepository;
+            Webhook = webhook;
+        }
+
+        public WebhookRepository WebhookRepository { get; }
+        public Webhook Webhook { get; }
+        public List<WebhookResult> CallHistory { get; } = new();
+        public bool CallHistoryLoaded { get; set; }
+
+        public void LoadCallHistory()
+        {
+            var calls = WebhookRepository.GetWebhookResults(Webhook.Id);
+            CallHistory.Clear();
+            CallHistory.AddRange(calls);
+            CallHistoryLoaded = true;
+        }
+    }
+}
