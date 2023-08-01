@@ -24,9 +24,11 @@ services.AddRazorPages();
 services.AddServerSideBlazor();
 services.AddSingleton(registrySettings);
 services.AddTransient(s => new WebhookRepository(dbConnectionString));
-services.AddSingleton<WebhooksService>();
+services.AddTransient<WebhooksService>();
+services.AddSingleton<WebhooksQueue>();
 services.AddTransient<RegistryService>();
 
+services.AddHostedService<WebhooksBackgroundService>();
 
 var app = builder.Build();
 

@@ -5,7 +5,7 @@ VisualStudioVersion = 17.6.33815.320
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "DockerRegistryUI", "DockerRegistryUI\DockerRegistryUI.csproj", "{C4D2213D-D817-401F-917F-2198AB71C160}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "DockerRegistry", "DockerRegistry\DockerRegistry.csproj", "{30F2A19C-6CC1-4C37-B860-96C8B12726F4}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "DockerRegistry", "DockerRegistry\DockerRegistry.csproj", "{30F2A19C-6CC1-4C37-B860-96C8B12726F4}"
 EndProject
 Project("{E53339B2-1760-4266-BCC7-CA923CBCF16C}") = "docker-compose", "docker-compose.dcproj", "{C9F19D82-652C-4340-8ECD-25396D6815E9}"
 EndProject

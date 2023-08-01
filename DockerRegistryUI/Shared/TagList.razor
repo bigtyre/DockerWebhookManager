@@ -1,0 +1,93 @@
+﻿@using DockerRegistryUI.Data;
+@using static DockerRegistryUI.Pages.RepositoryList;
+
+@switch (TagsLoadStatus) {
+    case LoadStatus.Pending:
+        <span>Tags have not been loaded yet.</span>
+        break;
+
+    case LoadStatus.InProgress:
+        <span>Loading...</span>
+        break;
+
+    case LoadStatus.Failed:
+        <span class="text-danger">Failed to load tags.</span>
+        break;
+
+    case LoadStatus.Succeeded:
+        if (Tags.Any())
+        {
+            <ul>
+            @foreach (var tag in Tags)
+            {
+                <li>
+                        <span>@tag</span> 
+                        @if (CanDeleteTag(tag)) {
+                            <button @onclick="() => DeleteTag(tag)" class="btn-link text-danger" style="margin-left:16px">Delete</button>
+                        }
+                    </li>
+            }
+            </ul>
+        }
+        else
+        {
+            <span>No tags found.</span>
+        }
+        break;
+}
+
+@code {
+    LoadStatus TagsLoadStatus { get; set; }
+
+    [Parameter] public string RepositoryName { get; set; }
+    [Inject] public RegistryService RegistryService { get; set; }
+    public List<string> Tags { get; } = new();
+
+    protected override async Task OnParametersSetAsync()
+    {
+        await base.OnParametersSetAsync();
+
+        await LoadTagsAsync();
+    }
+
+    async Task LoadTagsAsync()
+    {
+        try
+        {
+            TagsLoadStatus = LoadStatus.InProgress;
+            StateHasChanged();
+
+            var tags = await RegistryService.GetTagsAsync(RepositoryName);
+            Tags.Clear();
+            Tags.AddRange(tags);
+            TagsLoadStatus = LoadStatus.Succeeded;
+            StateHasChanged();
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine(ex.ToString());
+            TagsLoadStatus = LoadStatus.Failed;
+            StateHasChanged();
+        }
+    }
+
+    async void DeleteTag(string tag)
+    {
+        try
+        {
+            await RegistryService.DeleteTagAsync(RepositoryName, tag);
+            if (Tags.Contains(tag)) Tags.Remove(tag);
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine(ex.Message);
+        }
+    }
+
+    bool CanDeleteTag(string tag)
+    {
+        if (tag == "latest") return false;
+
+        return true;
+    }
+}

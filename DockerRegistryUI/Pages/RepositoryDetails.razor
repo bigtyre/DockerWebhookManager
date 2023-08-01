@@ -4,6 +4,10 @@
 @using DockerRegistryUI.Data;
 @using static DockerRegistryUI.Pages.RepositoryList;
 <h2>@RepositoryName</h2>
+<!--<button @onclick="@DeleteRepository">Delete repository</button>-->
+
+<h4 style="margin-top:24px;">Tags</h4>
+<TagList RepositoryName="@RepositoryName" />
 
 <h4 style="margin-top:24px;">Webhooks</h4>
 
@@ -38,6 +42,9 @@
     [Inject] 
     public WebhookRepository? WebhookRepository { get; set; }
 
+    [Inject]
+    public NavigationManager NavigationManager { get; set; }
+
     protected override async Task OnInitializedAsync()
     {
         await base.OnInitializedAsync();
@@ -70,7 +77,7 @@
 
     private async Task LoadRepositoryDetails()
     {
-        
+
     }
 
     private void LoadWebhooks()
@@ -94,7 +101,7 @@
     private async void CreateWebhook()
     {
         var urlText = NewWebhookUrl;
-        
+
 
         if (Uri.TryCreate(urlText, UriKind.Absolute, out var uri) is false)
         {
@@ -130,5 +137,31 @@
     private void HandleDismiss()
     {
         modal.Hide();
+    }
+
+    private async void DeleteRepository()
+    {
+        try
+        {
+            var repositoryName = RepositoryName;
+            if (repositoryName is null) return;
+
+            var tags = await RegistryService.GetTagsAsync(repositoryName);
+            var specificTags = tags.Where(t => t != "latest");
+            if (specificTags.Any())
+            {
+                // Delete each tag
+                foreach (var tag in specificTags)
+                {
+                    await RegistryService.DeleteTagAsync(repositoryName, tag);
+                }
+            }
+
+            NavigationManager.NavigateTo("/repositories");
+        }
+        catch (Exception ex)
+        {
+            
+        }
     }
 }

@@ -1,4 +1,5 @@
-﻿using DockerRegistry.Configuration;
+﻿using BigTyre;
+using DockerRegistry.Configuration;
 using Flurl;
 using Newtonsoft.Json;
 
@@ -25,6 +26,39 @@ public class RegistryService
         return client;
     }
 
+    public async Task<List<string>> GetTagsAsync(string repositoryName)
+    {
+        var httpClient = CreateHttpClient();
+
+        HttpResponseMessage response = await httpClient.GetAsync($"{repositoryName}/tags/list");
+
+        if (response.IsSuccessStatusCode is false)
+        {
+            var responseCode = response.StatusCode;
+            throw new HttpRequestException($"Failed to get tags from catalog. Response code was {responseCode}.");
+        }
+
+        string textContent = await response.Content.ReadAsStringAsync();
+        var responseObject = JsonConvert.DeserializeAnonymousType(textContent, new { tags = new List<string>() });
+
+        return responseObject?.tags ?? new();
+    }
+
+    public async Task DeleteTagAsync(string repositoryName, string tag)
+    {
+        var httpClient = CreateHttpClient();
+        HttpResponseMessage response = await httpClient.DeleteAsync($"{repositoryName}/manifests/{tag}");
+        if (!response.IsSuccessStatusCode)
+        {
+            throw new ApiException($"Failed to delete tag. API returned status code {response.StatusCode}.");
+        }
+    }
+
+    private Uri ToAbsoluteUrl(string relativeUrl)
+    {
+        return new Uri(Url.Combine(Settings.Uri.ToString(), "/v2/", relativeUrl));
+    }
+
     public async Task<List<DockerRepository>> GetRepositoriesAsync()
     {
         var httpClient = CreateHttpClient();
@@ -38,10 +72,10 @@ public class RegistryService
         }
 
         // Read the response content
-        string jsonContent = await response.Content.ReadAsStringAsync();
+        string textContent = await response.Content.ReadAsStringAsync();
 
         var responseObject = JsonConvert.DeserializeAnonymousType(
-            jsonContent,
+            textContent,
             new
             {
                 Repositories = new List<string>()
