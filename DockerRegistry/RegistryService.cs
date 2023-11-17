@@ -2,6 +2,7 @@
 using DockerRegistry.Configuration;
 using Flurl;
 using Newtonsoft.Json;
+using System.Net.Http.Headers;
 
 namespace DockerRegistryUI.Data;
 
@@ -16,12 +17,26 @@ public class RegistryService
 
     private HttpClient CreateHttpClient()
     {
-        var baseAddress = new Uri(Settings.Uri, "/v2/");
+        var baseUrl = Settings.Uri;
+        var baseAddress = new Uri(baseUrl, "/v2/");
 
         var client = new HttpClient
         {
             BaseAddress = baseAddress
         };
+
+        var username = Settings.Username;
+        if (!string.IsNullOrWhiteSpace(username))
+        {
+            var password = Settings.Password;
+
+            string base64Credentials = Convert.ToBase64String(
+                System.Text.Encoding.ASCII.GetBytes($"{username}:{password}")
+            );
+
+            // Set the Authorization header with Basic Authentication
+            client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Basic", base64Credentials);
+        }
 
         return client;
     }

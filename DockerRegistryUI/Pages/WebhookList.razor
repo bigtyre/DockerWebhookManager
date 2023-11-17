@@ -37,7 +37,7 @@
                             <td><button type="button" @onclick=@(() => DeleteWebhook(webhook)) class="btn btn-danger">Delete</button></td>
                         </tr>
 
-                        @if (viewModel.CallHistoryLoaded)
+                        @if (viewModel.HasLoadedCallHistory)
                         {
                             <tr>
                                 <td colspan="100">
@@ -80,62 +80,3 @@
 
     </tbody>
 </table>
-
-@code {
-    List<Webhook> Webhooks { get; } = new();
-
-    List<WebhookViewModel> WebhookViewModels { get; } = new();
-
-    [Parameter]
-    public LoadStatus LoadStatus { get; set; } = LoadStatus.Pending;
-
-    public void SetWebhooks(IEnumerable<Webhook> webhooks)
-    {
-        Webhooks.Clear();
-        Webhooks.AddRange(webhooks);
-
-        var viewModels = webhooks.Select(s => new WebhookViewModel(WebhookRepository, s)).ToList();
-        WebhookViewModels.Clear();
-        WebhookViewModels.AddRange(viewModels);
-    }
-
-    [Inject]
-    public WebhookRepository WebhookRepository { get; set; }
-
-    public void DeleteWebhook(Webhook webhook)
-    {
-        WebhookRepository.DeleteWebhook(webhook.Id);
-        if (Webhooks.Contains(webhook))
-        {
-            Webhooks.Remove(webhook);
-        }
-
-        var vms = WebhookViewModels.Where(w => w.Webhook == webhook).ToList();
-        foreach (var vm in vms)
-        {
-            WebhookViewModels.Remove(vm);
-        }
-    }
-
-    public class WebhookViewModel
-    {
-        public WebhookViewModel(WebhookRepository webhookRepository, Webhook webhook)
-        {
-            WebhookRepository = webhookRepository;
-            Webhook = webhook;
-        }
-
-        public WebhookRepository WebhookRepository { get; }
-        public Webhook Webhook { get; }
-        public List<WebhookResult> CallHistory { get; } = new();
-        public bool CallHistoryLoaded { get; set; }
-
-        public void LoadCallHistory()
-        {
-            var calls = WebhookRepository.GetWebhookResults(Webhook.Id);
-            CallHistory.Clear();
-            CallHistory.AddRange(calls);
-            CallHistoryLoaded = true;
-        }
-    }
-}

@@ -9,6 +9,7 @@
 
     public class WebhookResult
     {
+        public int WebhookId { get; set; }
         public DateTimeOffset Time { get; set; }
         public int ResponseCode { get; set; }
     }

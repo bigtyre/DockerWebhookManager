@@ -1,0 +1,52 @@
+﻿@page "/history"
+
+<h3>Webhook Call History</h3>
+
+@if (WebhookResultsLoading)
+{
+    <div>Loading...</div>
+}
+else if (WebhookResultsLoaded is false)
+{
+    <div>Webhook call history has not been loaded yet. Please wait.</div>
+}
+else if (WebhookResults.Count == 0)
+{
+    <div>No webhook call history found.</div>
+}
+else
+{
+    <table class="table table-striped">
+        <thead>
+            <tr>
+                <th>Time</th>
+                <th>Repository</th>
+                <th>URL</th>
+                <th>Result</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var webhookResult in WebhookResults)
+            {
+                var time = webhookResult.Time;
+                var webhook = webhookResult.Webhook;
+                var repositoryName = webhook?.RepositoryName ?? "<Unknown>";
+                string? repositoryUrl = null;
+                if (repositoryName is not null) repositoryUrl = GetRepositoryUrl(repositoryName);
+                var webhookUrl = webhook?.Url?.ToString() ?? "<Unknown>";
+                var responseCode = webhookResult.ResponseCode;
+
+                <tr>
+                    <td>@time</td>
+                    <td>@if (string.IsNullOrWhiteSpace(repositoryName) is false)
+                        {
+                            <a href="@repositoryUrl">@repositoryName</a>
+                        }
+                    </td>
+                    <td>@webhookUrl</td>
+                    <td>@responseCode</td>
+                </tr>
+            }
+        </tbody>
+    </table>
+}

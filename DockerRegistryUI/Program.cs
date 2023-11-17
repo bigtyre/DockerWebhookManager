@@ -3,8 +3,7 @@ using BigTyre.Configuration;
 using Dapper;
 using DockerRegistryUI.Controllers;
 using DockerRegistryUI.Data;
-using Microsoft.AspNetCore.Components;
-using Microsoft.AspNetCore.Components.Web;
+using DockerRegistryUI.Pages;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -27,6 +26,7 @@ services.AddTransient(s => new WebhookRepository(dbConnectionString));
 services.AddTransient<WebhooksService>();
 services.AddSingleton<WebhooksQueue>();
 services.AddTransient<RegistryService>();
+services.AddSingleton<EventSystem>();
 
 services.AddHostedService<WebhooksBackgroundService>();
 

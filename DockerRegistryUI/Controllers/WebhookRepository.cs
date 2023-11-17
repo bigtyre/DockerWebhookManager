@@ -12,13 +12,16 @@ namespace DockerRegistryUI.Controllers
 
         private string ConnectionString { get; }
 
+        private static readonly TimeSpan _storageTimeZone = TimeSpan.FromHours(10);
+
         private MySqlConnection CreateConnection()
         {
             var connection = new MySqlConnection(ConnectionString);
             return connection;
         }
 
-        public void DeleteWebhook(int webhookId) {
+        public void DeleteWebhook(int webhookId)
+        {
             using var connection = CreateConnection();
             connection.Open();
 
@@ -44,7 +47,7 @@ namespace DockerRegistryUI.Controllers
             using var connection = CreateConnection();
             connection.Open();
 
-            var creationTime = time.ToOffset(TimeSpan.FromHours(10)).DateTime;
+            var creationTime = time.ToOffset(_storageTimeZone).DateTime;
 
             connection.Execute("INSERT INTO WebhookCalls (WebhookId, Time, ResponseCode) VALUES (@webhookId, @time, @responseCode)", new
             {
@@ -54,18 +57,50 @@ namespace DockerRegistryUI.Controllers
             });
         }
 
-        public IEnumerable<WebhookResult> GetWebhookResults(int webhookId)
+        public IEnumerable<WebhookResult> GetWebhookResults(int? webhookId = null, DateTime? startDate = null)
         {
             using var connection = CreateConnection();
             connection.Open();
 
-            var results = connection.Query<WebhookResult>("SELECT Time, ResponseCode FROM WebhookCalls WHERE WebhookId = @webhookId", new
+            var conditions = new List<string>();
+            if (webhookId.HasValue)
             {
-                webhookId,
-            });
+                conditions.Add("`WebhookId` = @webhookId");
+            }
+
+            if (startDate.HasValue)
+            {
+                conditions.Add("`Time` >= @startDate");
+            }
+
+            // IMPORTANT - Ensure all conditions use parameters, rather than directly including the value,
+            // to prevent SQL injection attacks. This is important since we are dynamically building the query.
+            string condition = "";
+            if (conditions.Any())
+            {
+                condition = "WHERE " + string.Join("AND", conditions);
+            }
+
+            var displayTimeZone = TimeSpan.FromHours(10);
+
+            var results = connection.Query<WebhookResult>(
+                $@"SELECT 
+                    `WebhookId`,
+                    `Time`, 
+                    `ResponseCode` 
+                FROM `WebhookCalls` 
+                {condition}", new
+                {
+                    webhookId,
+                    startDate,
+                }
+            );
 
             foreach (var result in results)
             {
+                var time = new DateTimeOffset(result.Time.DateTime, _storageTimeZone);
+
+                result.Time = time.ToOffset(displayTimeZone);
                 yield return result;
             }
         }
