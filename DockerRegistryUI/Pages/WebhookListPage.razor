@@ -38,6 +38,7 @@
         }
         catch (Exception ex)
         {
+            Console.WriteLine("Failed to load webhooks: " + ex.Message);
             WebhooksLoadStatus = LoadStatus.Failed;
             StateHasChanged();
         }

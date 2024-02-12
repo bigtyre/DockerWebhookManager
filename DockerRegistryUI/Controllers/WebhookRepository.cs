@@ -132,7 +132,7 @@ namespace DockerRegistryUI.Controllers
             connection.Open();
 
             var results = connection.Query<Webhook>(
-                 "SELECT Id, RepositoryName, Url " +
+                "SELECT Id, RepositoryName, Url " +
                 "FROM Webhooks"
             );
 

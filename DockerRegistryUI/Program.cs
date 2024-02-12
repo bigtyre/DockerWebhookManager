@@ -1,9 +1,11 @@
 using BigTyre;
 using BigTyre.Configuration;
 using Dapper;
+using DockerRegistryUI.BackgroundServiceStatus;
 using DockerRegistryUI.Controllers;
 using DockerRegistryUI.Data;
 using DockerRegistryUI.Pages;
+using Microsoft.Extensions.Hosting;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -28,7 +30,12 @@ services.AddSingleton<WebhooksQueue>();
 services.AddTransient<RegistryService>();
 services.AddSingleton<EventSystem>();
 
+services.AddSingleton<IBackgroundServiceStatusTracker, BackgroundServiceStatusTracker>();
+
 services.AddHostedService<WebhooksBackgroundService>();
+
+services.AddHealthChecks().AddCheck<BackgroundServiceHealthCheck>("background_service_health_check");
+
 
 var app = builder.Build();
 
@@ -45,6 +52,8 @@ app.UsePathBase("/docker/registry");
 app.UseStaticFiles();
 
 app.UseRouting();
+
+app.MapHealthChecks("/health");
 
 app.MapBlazorHub();
 app.MapControllers();
