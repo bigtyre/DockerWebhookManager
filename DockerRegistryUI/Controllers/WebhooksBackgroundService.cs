@@ -64,41 +64,44 @@ namespace DockerRegistryUI.Controllers
 
         protected override async Task ExecuteAsync(CancellationToken stoppingToken)
         {
-            Console.WriteLine("Webhooks Background Service started");
-            ServiceStatusTracker.UpdateStatus(nameof(WebhooksBackgroundService), ServiceStatus.Running);
-            try
+            await Task.Run(async () =>
             {
-                while (!stoppingToken.IsCancellationRequested)
+                Console.WriteLine("Webhooks Background Service started");
+                ServiceStatusTracker.UpdateStatus(nameof(WebhooksBackgroundService), ServiceStatus.Running);
+                try
                 {
-                    try
+                    while (!stoppingToken.IsCancellationRequested)
                     {
-                        while (Queue.TryDequeue(out var webhookBody))
+                        try
                         {
-                            try
+                            while (Queue.TryDequeue(out var webhookBody))
                             {
-                                Console.WriteLine("Dequeued webhook. Processing it.");
+                                try
+                                {
+                                    Console.WriteLine("Dequeued webhook. Processing it.");
 
-                                await ProcessWebhookAsync(webhookBody);
-                            }
-                            catch (Exception ex)
-                            {
-                                Console.WriteLine(ex.ToString());
+                                    await ProcessWebhookAsync(webhookBody);
+                                }
+                                catch (Exception ex)
+                                {
+                                    Console.WriteLine(ex.ToString());
+                                }
                             }
                         }
-                    }
-                    catch (Exception ex)
-                    {
-                        Console.WriteLine(ex.ToString());
-                    }
+                        catch (Exception ex)
+                        {
+                            Console.WriteLine(ex.ToString());
+                        }
 
-                    await Task.Delay(500, stoppingToken);
+                        await Task.Delay(500, stoppingToken);
+                    }
                 }
-            }
-            finally
-            {
-                Console.WriteLine("Webhooks Background Service exited.");
-                ServiceStatusTracker.UpdateStatus(nameof(WebhooksBackgroundService), ServiceStatus.Stopped);
-            }
+                finally
+                {
+                    Console.WriteLine("Webhooks Background Service exited.");
+                    ServiceStatusTracker.UpdateStatus(nameof(WebhooksBackgroundService), ServiceStatus.Stopped);
+                }
+            }, stoppingToken);
         }
     }
 }

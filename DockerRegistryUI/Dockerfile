@@ -1,6 +1,9 @@
 #See https://aka.ms/customizecontainer to learn how to customize your debug container and how Visual Studio uses this Dockerfile to build your images for faster debugging.
 
-FROM mcr.microsoft.com/dotnet/aspnet:6.0 AS base
+FROM mcr.microsoft.com/dotnet/aspnet:6.0-alpine AS base
+ENV DOTNET_RUNNING_IN_CONTAINER=true
+ENV DOTNET_SYSTEM_GLOBALIZATION_INVARIANT=false
+RUN apk update && apk --no-cache add icu-libs fontconfig ttf-dejavu wget
 WORKDIR /app
 EXPOSE 80
 EXPOSE 443

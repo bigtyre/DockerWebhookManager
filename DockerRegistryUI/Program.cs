@@ -5,9 +5,9 @@ using DockerRegistryUI.BackgroundServiceStatus;
 using DockerRegistryUI.Controllers;
 using DockerRegistryUI.Data;
 using DockerRegistryUI.Pages;
-using Microsoft.Extensions.Hosting;
 
 var builder = WebApplication.CreateBuilder(args);
+builder.Configuration.AddKeyPerFile("/var/run/secrets", optional: true);
 
 var appSettings = new AppSettings();
 var config = builder.Configuration;
@@ -40,19 +40,13 @@ services.AddHealthChecks().AddCheck<BackgroundServiceHealthCheck>("background_se
 var app = builder.Build();
 
 // Configure the HTTP request pipeline.
-if (!app.Environment.IsDevelopment())
-{
-    app.UseExceptionHandler("/Error");
-    // The default HSTS value is 30 days. You may want to change this for production scenarios, see https://aka.ms/aspnetcore-hsts.
-    app.UseHsts();
-}
-
 app.UsePathBase("/docker/registry");
 
 app.UseStaticFiles();
 
 app.UseRouting();
 
+// Map health checks to a specific endpoint
 app.MapHealthChecks("/health");
 
 app.MapBlazorHub();
