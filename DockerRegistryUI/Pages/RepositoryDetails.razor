@@ -37,13 +37,13 @@
     private WebhookList webhookList { get; set; }
 
     [Inject]
-    public RegistryService RegistryService { get; set; }
+    public RegistryService RegistryService { get; set; } = default!;
 
     [Inject] 
-    public WebhookRepository? WebhookRepository { get; set; }
+    public WebhookRepository WebhookRepository { get; set; } = default!;
 
     [Inject]
-    public NavigationManager NavigationManager { get; set; }
+    public NavigationManager NavigationManager { get; set; } = default!;
 
     protected override async Task OnInitializedAsync()
     {

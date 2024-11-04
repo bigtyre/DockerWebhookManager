@@ -11,6 +11,7 @@ HEALTHCHECK --start-period=30s  --interval=30s --timeout=5s CMD wget --no-verbos
 
 FROM mcr.microsoft.com/dotnet/sdk:6.0 AS build
 WORKDIR /src
+COPY ["DockerRegistryUI/TrivyAPIClient.csproj", "TrivyAPIClient/"]
 COPY ["DockerRegistryUI/DockerRegistryUI.csproj", "DockerRegistryUI/"]
 COPY ["DockerRegistry/DockerRegistry.csproj", "DockerRegistry/"]
 RUN dotnet restore "DockerRegistryUI/DockerRegistryUI.csproj"

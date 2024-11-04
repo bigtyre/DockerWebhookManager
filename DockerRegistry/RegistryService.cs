@@ -6,18 +6,11 @@ using System.Net.Http.Headers;
 
 namespace DockerRegistryUI.Data;
 
-public class RegistryService
+public class RegistryService(RegistrySettings settings)
 {
-    public RegistryService(RegistrySettings settings)
-    {
-        Settings = settings;
-    }
-
-    public RegistrySettings Settings { get; }
-
     private HttpClient CreateHttpClient()
     {
-        var baseUrl = Settings.Uri;
+        var baseUrl = settings.Uri;
         var baseAddress = new Uri(baseUrl, "/v2/");
 
         var client = new HttpClient
@@ -25,10 +18,10 @@ public class RegistryService
             BaseAddress = baseAddress
         };
 
-        var username = Settings.Username;
+        var username = settings.Username;
         if (!string.IsNullOrWhiteSpace(username))
         {
-            var password = Settings.Password;
+            var password = settings.Password;
 
             string base64Credentials = Convert.ToBase64String(
                 System.Text.Encoding.ASCII.GetBytes($"{username}:{password}")
@@ -56,7 +49,13 @@ public class RegistryService
         string textContent = await response.Content.ReadAsStringAsync();
         var responseObject = JsonConvert.DeserializeAnonymousType(textContent, new { tags = new List<string>() });
 
-        return responseObject?.tags ?? new();
+        return responseObject?.tags ?? [];
+    }
+
+    public Uri GetImageUrl(string repositoryName, string tag)
+    {
+        var baseUrl = settings.Uri;
+        return new(Url.Combine(baseUrl.ToString(), $"{repositoryName}:{tag}"));
     }
 
     public async Task DeleteTagAsync(string repositoryName, string tag)
@@ -67,11 +66,6 @@ public class RegistryService
         {
             throw new ApiException($"Failed to delete tag. API returned status code {response.StatusCode}.");
         }
-    }
-
-    private Uri ToAbsoluteUrl(string relativeUrl)
-    {
-        return new Uri(Url.Combine(Settings.Uri.ToString(), "/v2/", relativeUrl));
     }
 
     public async Task<List<DockerRepository>> GetRepositoriesAsync()

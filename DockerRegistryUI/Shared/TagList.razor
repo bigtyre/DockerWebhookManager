@@ -1,7 +1,8 @@
 ﻿@using DockerRegistryUI.Data;
 @using static DockerRegistryUI.Pages.RepositoryList;
 
-@switch (TagsLoadStatus) {
+@switch (TagsLoadStatus)
+{
     case LoadStatus.Pending:
         <span>Tags have not been loaded yet.</span>
         break;
@@ -17,17 +18,38 @@
     case LoadStatus.Succeeded:
         if (Tags.Any())
         {
-            <ul>
-            @foreach (var tag in Tags)
-            {
-                <li>
-                        <span>@tag</span> 
-                        @if (CanDeleteTag(tag)) {
-                            <button @onclick="() => DeleteTag(tag)" class="btn-link text-danger" style="margin-left:16px">Delete</button>
-                        }
-                    </li>
-            }
-            </ul>
+            <table>
+                @foreach (var tag in Tags)
+                {
+                    <tr>
+                        <td><a href="@GetTagLink(tag)">@tag</a></td>
+                        <td class="px-4">
+                            <button class="btn btn-info" @onclick="() => ScanImage(tag)" disabled="@IsScanning">Scan</button>
+
+                            <span class="px-3">
+                            @if (IsScanning)
+                            {
+                                <span>Scanning...</span>
+                            }
+                            else
+                            {
+                                @if (ScanResult != null)
+                                {
+                                    <span class="@(ScanResult.IsFailure ? "text-danger" : "")">@ScanResult.Message</span>
+                                }
+                            }
+                            </span>
+                        </td>
+
+                        <td>
+                            @if (CanDeleteTag(tag))
+                            {
+                                <button @onclick="() => DeleteTag(tag)" class="btn-link text-danger" style="margin-left:16px">Delete</button>
+                            }
+                        </td>
+                    </tr>
+                }
+            </table>
         }
         else
         {
@@ -36,12 +58,50 @@
         break;
 }
 
-@code {
+@code
+{
     LoadStatus TagsLoadStatus { get; set; }
 
-    [Parameter] public string RepositoryName { get; set; }
-    [Inject] public RegistryService RegistryService { get; set; }
+    [Parameter] public string RepositoryName { get; set; } = default!;
+    [Inject] public RegistryService RegistryService { get; set; } = default!;
+    [Inject] public VulnerabilityScanner VulnerabilityScanner { get; set; } = default!;
+    [Inject] public ILogger<TagList> Logger { get; set; } = default!;
+
     public List<string> Tags { get; } = new();
+
+    public record VulnerabilityScanResult(string Message, bool IsFailure);
+
+    private VulnerabilityScanResult? _scanResult;
+    public VulnerabilityScanResult? ScanResult
+    {
+        get => _scanResult;
+        set
+        {
+            if (_scanResult != value)
+            {
+                _scanResult = value;
+                InvokeAsync(StateHasChanged);
+            }
+        }
+    }
+    private bool _isScanning;
+    public bool IsScanning
+    {
+        get => _isScanning;
+        set
+        {
+            if (_isScanning != value)
+            {
+                _isScanning = value;
+                InvokeAsync(StateHasChanged);
+            }
+        }
+    }
+
+    public string GetTagLink(string tag) 
+    {
+        return $"repositories/{RepositoryName}/tags/{tag}";
+    }
 
     protected override async Task OnParametersSetAsync()
     {
@@ -71,6 +131,75 @@
         }
     }
 
+    async void ScanImage(string tag)
+    {
+        if (IsScanning)
+            return;
+
+        IsScanning = true;
+        ScanResult = null;
+        try
+        {
+            try
+            {
+                var result = await VulnerabilityScanner.ScanAsync(RepositoryName, tag);
+
+                var vulnerabilityCounts = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase)
+                {
+                    { "Critical", 0 },
+                    { "High", 0 },
+                    { "Medium", 0 },
+                    { "Low", 0 },
+                    { "Unknown", 0 },
+                };
+
+                foreach (var res in result.Results)
+                {
+                    var vulnerabilities = res.Vulnerabilities;
+                    var counts = vulnerabilities
+                        .GroupBy(c => c.Severity)
+                        .Select(c => new
+                        {
+                            Severity = c.Key,
+                            Count = c.Count()
+                        })
+                        .ToList();
+
+                    foreach (var c in counts)
+                    {
+                        var severity = c.Severity;
+                        var previous = vulnerabilityCounts.TryGetValue(severity, out var val) ? val : 0;
+                        vulnerabilityCounts[severity] = previous + c.Count;
+                    };
+                }
+
+                Logger.LogInformation($"Vulnerability scan completed on {RepositoryName}:{tag}.");
+                var msg = "Scanning finished.";
+                foreach (var pair in vulnerabilityCounts)
+                {
+                    var severity = pair.Key;
+                    var count = pair.Value;
+
+                    Logger.LogInformation($"{severity}: {count}");
+
+                    msg += $" {severity}: {count},";
+                }
+                msg = msg.TrimEnd(',');
+
+                ScanResult = new(msg, IsFailure: false);
+            }
+            finally
+            {
+                IsScanning = false;
+            }
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError("Failed to scan image: {errMessage}", ex.Message);
+            ScanResult = new("Scanning failed.", IsFailure: true);
+        }
+    }
+
     async void DeleteTag(string tag)
     {
         try
@@ -86,7 +215,8 @@
 
     bool CanDeleteTag(string tag)
     {
-        if (tag == "latest") return false;
+        if (tag == "latest")
+            return false;
 
         return true;
     }

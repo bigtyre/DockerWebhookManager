@@ -1,13 +1,14 @@
 ﻿@using Microsoft.AspNetCore.Components.Web
 @namespace DockerRegistryUI.Pages
 @addTagHelper *, Microsoft.AspNetCore.Mvc.TagHelpers
+@inject Settings settings
 
 <!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <base href="/docker/registry/" />
+    <base href="@settings.BasePath" />
     <link rel="stylesheet" href="css/bootstrap/bootstrap.min.css" />
     <link href="css/site.css" rel="stylesheet" />
     <link href="DockerRegistryUI.styles.css" rel="stylesheet" />

@@ -1,0 +1,79 @@
+﻿@page "/repositories/{RepositoryName}/tags/{TagName}"
+@using DockerRegistryUI.Data
+@using TrivyAPIClient
+
+<h3>@RepositoryName</h3>
+<h4>@TagName</h4>
+
+<h5>Vulnerabilities</h5>
+<button @onclick="() => UpdateVulnerabilities()">Scan</button>
+
+<table class="table">
+    @if (vulnerabilities.Count < 1)
+    {
+        <tr>
+            <td>No vulnerabilities found.</td>
+        </tr>
+    }
+    else
+    {
+        <tr>
+            <td colspan="10">Vulnerabilities found: @vulnerabilities.Count</td>
+        </tr>
+        <tr>
+            <th class="p-3">Severity</th>
+            <td class="p-3">Package Name</td>
+            <td class="p-3">Description</td>
+        </tr>
+
+        @foreach (var vulnerability in vulnerabilities)
+        {
+            <tr>
+                <td class="p-3" style="vertical-align: top">@vulnerability.Severity</td>
+                <td class="p-3" style="vertical-align: top">@vulnerability.PkgName</td>
+                <td class="p-3" style="vertical-align: top">@vulnerability.Description</td>
+            </tr>
+        }
+    }
+</table>
+
+
+@code {
+    [Parameter]
+    public string? RepositoryName { get; set; }
+
+    [Parameter]
+    public string? TagName { get; set; }
+
+    [Inject] public VulnerabilityScanner VulnerabilityScanner { get; set; } = default!;
+
+    private List<Vulnerability> vulnerabilities { get; } = new();
+
+
+    private async void UpdateVulnerabilities()
+    {
+        try
+        {
+            if (RepositoryName is null || TagName is null) return;
+
+            var result = await VulnerabilityScanner.ScanAsync(RepositoryName, TagName);
+            var v = result.Results.SelectMany(c => c.Vulnerabilities).ToList();
+
+            v = v.OrderBy(c => !c.Severity.Equals("Critical"))
+            .ThenBy(c => !c.Severity.Equals("High"))
+            .ThenBy(c => !c.Severity.Equals("Medium"))
+            .ThenBy(c => !c.Severity.Equals("Low"))
+            .ThenBy(c => !c.Severity.Equals("Unknown"))
+            .ToList();
+
+            vulnerabilities.Clear();
+            vulnerabilities.AddRange(v);
+            await InvokeAsync(StateHasChanged);
+        }
+        catch (Exception ex)
+        {
+            
+        }
+    }
+
+}
