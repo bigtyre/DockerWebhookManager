@@ -3,20 +3,13 @@ using MySql.Data.MySqlClient;
 
 namespace DockerRegistryUI.Controllers
 {
-    public class WebhookRepository
+    public class WebhookRepository(string connectionString)
     {
-        public WebhookRepository(string connectionString)
-        {
-            ConnectionString = connectionString;
-        }
-
-        private string ConnectionString { get; }
-
         private static readonly TimeSpan _storageTimeZone = TimeSpan.FromHours(10);
 
         private MySqlConnection CreateConnection()
         {
-            var connection = new MySqlConnection(ConnectionString);
+            var connection = new MySqlConnection(connectionString);
             return connection;
         }
 

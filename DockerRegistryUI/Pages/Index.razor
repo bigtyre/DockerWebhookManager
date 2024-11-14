@@ -1,7 +1,17 @@
 ﻿@page "/"
+@inject NavigationManager Navigation
 
-<PageTitle>Index</PageTitle>
-
-<h1>Docker Registry Webhooks</h1>
-
-<p>See the <a href="repositories">repository list</a> to create webhooks.</p>
+@code {
+    protected override void OnInitialized()
+    {
+        try 
+        {
+            var redirectUrl = $"{Navigation.BaseUri}repositories/";
+            Navigation.NavigateTo(redirectUrl, true);
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Navigation failed: {ex.Message}");
+        }
+    }
+}

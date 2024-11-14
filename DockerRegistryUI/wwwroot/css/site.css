@@ -34,6 +34,10 @@ a, .btn-link {
     color: red;
 }
 
+.table td, .table th {
+    padding:16px;
+}
+
 #blazor-error-ui {
     background: lightyellow;
     bottom: 0;
@@ -59,6 +63,30 @@ a, .btn-link {
     color: white;
 }
 
-    .blazor-error-boundary::after {
-        content: "An error has occurred."
-    }
+.blazor-error-boundary::after {
+    content: "An error has occurred."
+}
+
+
+.severity-critical {
+    color: red;
+    font-weight:bold;
+}
+
+.severity-high {
+    color: maroon;
+    font-weight: bold;
+}
+
+.severity-medium {
+    color: orange;
+    font-weight: bold;
+}
+
+.severity-low {
+    color: goldenrod;
+}
+
+.severity-unknown {
+    color: slategrey;
+}

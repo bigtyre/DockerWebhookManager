@@ -1,6 +1,4 @@
-﻿using System.Runtime.Serialization;
-
-namespace BigTyre;
+﻿namespace BigTyre;
 public class ApiException : Exception
 {
     public ApiException()
@@ -12,10 +10,6 @@ public class ApiException : Exception
     }
 
     public ApiException(string? message, Exception? innerException) : base(message, innerException)
-    {
-    }
-
-    protected ApiException(SerializationInfo info, StreamingContext context) : base(info, context)
     {
     }
 }

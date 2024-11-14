@@ -1,28 +1,21 @@
 ﻿using Microsoft.Extensions.Diagnostics.HealthChecks;
-using System.Threading;
-using System.Threading.Tasks;
-using System.Linq;
-using Microsoft.Extensions.Hosting;
 
 namespace DockerRegistryUI.BackgroundServiceStatus;
 
-public class BackgroundServiceHealthCheck : IHealthCheck
+public class BackgroundServiceHealthCheck(
+    ILogger<BackgroundServiceHealthCheck> logger, 
+    IBackgroundServiceStatusTracker statusTracker
+) : IHealthCheck
 {
-    private readonly IBackgroundServiceStatusTracker _statusTracker;
-
-    public BackgroundServiceHealthCheck(IBackgroundServiceStatusTracker statusTracker)
-    {
-        _statusTracker = statusTracker;
-    }
-
     public Task<HealthCheckResult> CheckHealthAsync(HealthCheckContext context, CancellationToken cancellationToken = default)
     {
-        var allServices = _statusTracker.GetServices();
+        var allServices = statusTracker.GetServices();
 
         var unhealthyServices = allServices.Where(service => service.Status == ServiceStatus.Stopped);
 
         if (unhealthyServices.Any())
         {
+            logger.LogDebug("{serviceName} - Reporting unhealthy.", nameof(BackgroundServiceHealthCheck));
             return Task.FromResult(HealthCheckResult.Unhealthy($"The following services are stopped: {string.Join(", ", unhealthyServices)}"));
         }
 

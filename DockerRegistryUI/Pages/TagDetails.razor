@@ -2,78 +2,51 @@
 @using DockerRegistryUI.Data
 @using TrivyAPIClient
 
-<h3>@RepositoryName</h3>
-<h4>@TagName</h4>
+<h3>@(RepositoryName):@(TagName)</h3>
 
-<h5>Vulnerabilities</h5>
-<button @onclick="() => UpdateVulnerabilities()">Scan</button>
+<div class="mb-3">
+    <button class="btn btn-success" disabled="@IsScanning" @onclick="() => UpdateVulnerabilities()">Scan image for vulnerable packages</button>
+</div>
 
-<table class="table">
-    @if (vulnerabilities.Count < 1)
-    {
-        <tr>
-            <td>No vulnerabilities found.</td>
-        </tr>
-    }
-    else
-    {
-        <tr>
-            <td colspan="10">Vulnerabilities found: @vulnerabilities.Count</td>
-        </tr>
-        <tr>
-            <th class="p-3">Severity</th>
-            <td class="p-3">Package Name</td>
-            <td class="p-3">Description</td>
-        </tr>
-
-        @foreach (var vulnerability in vulnerabilities)
+@if (IsScanning)
+{
+    <div>Vulnerability scan in progress...</div>
+}
+else if (!HasScanned)
+{
+    <div>Vulnerability scan has not been run. Use the button above to perform a vulnerability scan.</div>
+}
+else 
+{
+    <table style="mt-3" class="table table-bordered">
+        @if (_vulnerabilities.Count < 1)
         {
             <tr>
-                <td class="p-3" style="vertical-align: top">@vulnerability.Severity</td>
-                <td class="p-3" style="vertical-align: top">@vulnerability.PkgName</td>
-                <td class="p-3" style="vertical-align: top">@vulnerability.Description</td>
+                <td>
+                    <span style="color:green" class="oi oi-check" aria-hidden="true"></span>
+                    <span>No vulnerabilities found.</span>
+                </td>
             </tr>
         }
-    }
-</table>
-
-
-@code {
-    [Parameter]
-    public string? RepositoryName { get; set; }
-
-    [Parameter]
-    public string? TagName { get; set; }
-
-    [Inject] public VulnerabilityScanner VulnerabilityScanner { get; set; } = default!;
-
-    private List<Vulnerability> vulnerabilities { get; } = new();
-
-
-    private async void UpdateVulnerabilities()
-    {
-        try
+        else
         {
-            if (RepositoryName is null || TagName is null) return;
+            <tr>
+                <td style="font-size: 1.2em;" colspan="10">Vulnerabilities found: <span style="font-weight:bold;color:maroon;">@_vulnerabilities.Count</span></td>
+            </tr>
+            <tr>
+                <th>Severity</th>
+                <th>Package</th>
+                <th>Description</th>
+            </tr>
 
-            var result = await VulnerabilityScanner.ScanAsync(RepositoryName, TagName);
-            var v = result.Results.SelectMany(c => c.Vulnerabilities).ToList();
-
-            v = v.OrderBy(c => !c.Severity.Equals("Critical"))
-            .ThenBy(c => !c.Severity.Equals("High"))
-            .ThenBy(c => !c.Severity.Equals("Medium"))
-            .ThenBy(c => !c.Severity.Equals("Low"))
-            .ThenBy(c => !c.Severity.Equals("Unknown"))
-            .ToList();
-
-            vulnerabilities.Clear();
-            vulnerabilities.AddRange(v);
-            await InvokeAsync(StateHasChanged);
+            @foreach (var vulnerability in _vulnerabilities)
+            {
+                <tr>
+                    <td class="@(GetSeverityCssClass(vulnerability.Severity))" style="vertical-align: top;">@vulnerability.Severity</td>
+                    <td class="" style="vertical-align: top">@vulnerability.PkgName</td>
+                    <td class="" style="vertical-align: top">@vulnerability.Description</td>
+                </tr>
+            }
         }
-        catch (Exception ex)
-        {
-            
-        }
-    }
-
+    </table>
 }

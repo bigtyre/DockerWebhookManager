@@ -8,6 +8,7 @@
     <!--<DockerDefaultTargetOS>Linux</DockerDefaultTargetOS>-->
 	  <DockerfileTag>docker-registry-ui</DockerfileTag>
     <DockerComposeProjectPath>..\docker-compose.dcproj</DockerComposeProjectPath>
+    <DockerDefaultTargetOS>Linux</DockerDefaultTargetOS>
   </PropertyGroup>
 
   <ItemGroup>

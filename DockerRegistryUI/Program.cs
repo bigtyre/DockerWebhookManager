@@ -2,10 +2,13 @@ using BigTyre;
 using BigTyre.Configuration;
 using Dapper;
 using DockerRegistry.Configuration;
+using DockerRegistryUI;
 using DockerRegistryUI.BackgroundServiceStatus;
 using DockerRegistryUI.Controllers;
 using DockerRegistryUI.Data;
 using DockerRegistryUI.Pages;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.DependencyInjection;
 using TrivyAPIClient;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -30,10 +33,13 @@ SqlMapper.AddTypeHandler(new GuidTypeHandler());
 
 // Add services to the container.
 var services = builder.Services;
+services.AddSingleton<DockerImageUrlBuilder>();
 services.AddRazorPages();
 services.AddServerSideBlazor();
 services.AddSingleton(new RegistrySettings(registryUri, registryUsername, registryPassword));
+services.AddTransient(s => new MySqlSettings(dbConnectionString));
 services.AddTransient(s => new WebhookRepository(dbConnectionString));
+services.AddTransient<VulnerabilityScanRepository>();
 services.AddTransient<WebhooksService>();
 services.AddSingleton<WebhooksQueue>();
 services.AddTransient<VulnerabilityScanner>();
@@ -43,9 +49,19 @@ services.AddSingleton(svc => new TrivyApiClientSettings(trivyApiUrl.ToString()))
 services.AddTransient<RegistryService>();
 services.AddSingleton<EventSystem>();
 
+services.AddSingleton<VulnerabilityDbContextFactory>();
 services.AddSingleton<IBackgroundServiceStatusTracker, BackgroundServiceStatusTracker>();
 
 services.AddHostedService<WebhooksBackgroundService>();
+services.AddHostedService(svc =>
+{
+    var scope = svc.CreateScope();
+    return new VulnerabilityScanningService(
+        scope.ServiceProvider.GetRequiredService<ILogger<VulnerabilityScanningService>>(),
+        scope.ServiceProvider.GetRequiredService<RegistryService>(),
+        scope.ServiceProvider.GetRequiredService<VulnerabilityScanner>()
+    );
+});
 
 services.AddHealthChecks().AddCheck<BackgroundServiceHealthCheck>("background_service_health_check");
 
@@ -57,8 +73,9 @@ if (basePath.StartsWith('/') is false)
 if (basePath.EndsWith('/') is false)
     basePath = $"{basePath}/";
 
-services.AddSingleton(svc => new DockerRegistryUI.Settings(basePath));
+services.AddSingleton(svc => new Settings(basePath));
 services.AddHttpClient();
+services.AddDbContext<VulnerabilityDbContext>(options => options.UseMySQL(dbConnectionString));
 
 var app = builder.Build();
 

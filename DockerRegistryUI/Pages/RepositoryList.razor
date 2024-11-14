@@ -18,6 +18,7 @@
             <thead>
                 <tr>
                     <th>Repository Name</th>
+                    <th colspan="6"></th>
                 </tr>
             </thead>
             <tbody>
@@ -27,6 +28,68 @@
                         <td>
                             <a href="repositories/@(repository.Name)/">@repository.Name</a>
                         </td>
+                        @{
+                            var counts = repository.VulnerabilityCounts;
+                        }
+                        @if (counts is null)
+                        {
+                            <td colspan="6"></td>
+                        }
+                        else {
+                            <td>
+                                <span class="oi oi-shield" style="color:darkslategray"></span>
+                            </td>
+                        <td>
+                                @if(counts.Critical < 1)
+                                {
+                                    <span style="color:green">0</span>
+                                }
+                                else
+                                {
+                                    <span style="color:maroon;font-weight:bold">@counts.Critical</span>
+                                }
+                        </td>
+                        <td>
+                                @if (counts.High < 1)
+                                {
+                                    <span style="color:green">0</span>
+                                }
+                                else
+                                {
+                                    <span style="color:red;font-weight:bold">@counts.High</span>
+                                }
+                        </td>
+                        <td>
+                                @if (counts.Medium < 1)
+                                {
+                                    <span style="color:green">0</span>
+                                }
+                                else
+                                {
+                                    <span style="color:orange;font-weight:bold">@counts.Medium</span>
+                                }
+                        </td>
+                        <td>
+                                @if (counts.Low < 1)
+                                {
+                                    <span style="color:green">0</span>
+                                }
+                                else
+                                {
+                                    <span style="color:gold">@counts.Low</span>
+                                }
+                        </td>
+                        <td>
+                                @if (counts.Low < 1)
+                                {
+                                    <span style="color:green">0</span>
+                                }
+                                else
+                                {
+                                    <span style="color:grey">@counts.Low</span>
+                                }
+                        </td>
+                        }
                     </tr>
                 }
             </tbody>
@@ -36,10 +99,20 @@
 
 @code {
     [Inject]
-    internal RegistryService RegistryService { get; set; }
+    internal RegistryService RegistryService { get; set; } = null!;
 
-    private List<DockerRepository> Repositories { get; } = new();
+    [Inject]
+    internal VulnerabilityScanRepository VulnerabilityScanRepository { get; set; } = null!;
 
+    [Inject]
+    internal DockerImageUrlBuilder DockerImageUrlBuilder { get; set; } = null!;
+
+    [Inject]
+    internal ILogger<RepositoryList> _logger { get; set; } = null!;
+
+    private List<RepositoryViewModel> Repositories { get; } = new();
+
+    record RepositoryViewModel(string Name, VulnerabilityCounts? VulnerabilityCounts);
 
     public LoadStatus RepositoryLoadStatus { get; set; }
     public enum LoadStatus
@@ -59,7 +132,8 @@
 
     private async Task LoadRepositoriesAsync()
     {
-        if (RepositoryLoadStatus == LoadStatus.InProgress) return;
+        if (RepositoryLoadStatus == LoadStatus.InProgress) 
+            return;
 
         try
         {
@@ -67,8 +141,36 @@
             StateHasChanged();
 
             var repositories = await RegistryService.GetRepositoriesAsync();
+
+            var repositoryNames = repositories.Select(c => new RepositoryTag(c.Name, "latest")).ToList();
+            Dictionary<string, VulnerabilityCounts> vulnerabilityCounts = new();
+            try 
+            {
+                vulnerabilityCounts = await VulnerabilityScanRepository.GetLatestVulnerabilityCountsAsync(repositoryNames);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Failed to load vulnerability counts: {errorMessage}", ex.Message);
+            }
+
+            var repositoryVms = new List<RepositoryViewModel>();
+            foreach (var repository in repositories)
+            {
+
+                var image = DockerImageUrlBuilder.GetImageUrl(repository.Name, "latest").WithoutScheme();
+
+                VulnerabilityCounts? count = null;
+                if (vulnerabilityCounts.TryGetValue(image, out var counts))
+                {
+                    count = counts;
+                }
+
+                var vm = new RepositoryViewModel(repository.Name, count);
+                repositoryVms.Add(vm);
+            }
+
             Repositories.Clear();
-            Repositories.AddRange(repositories);
+            Repositories.AddRange(repositoryVms);
 
             RepositoryLoadStatus = LoadStatus.Succeeded;
             StateHasChanged();

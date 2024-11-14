@@ -3,23 +3,13 @@ using Newtonsoft.Json;
 
 namespace DockerRegistryUI.Controllers
 {
-    public class WebhooksBackgroundService : BackgroundService
+    public class WebhooksBackgroundService(
+        WebhooksService webhooksService,
+        WebhooksQueue queue,
+        IBackgroundServiceStatusTracker serviceStatusTracker
+        ) : BackgroundService
     {
-        public WebhooksBackgroundService(
-            WebhooksService webhooksService,
-            WebhooksQueue queue,
-            IBackgroundServiceStatusTracker serviceStatusTracker
-        )
-        {
-            WebhooksService = webhooksService;
-            Queue = queue;
-            ServiceStatusTracker = serviceStatusTracker;
-        }
-
-        private WebhooksService WebhooksService { get; }
-        private WebhooksQueue Queue { get; }
-        private IBackgroundServiceStatusTracker ServiceStatusTracker { get; }
-        private Dictionary<string, DateTime> LastProcessTimes { get; } = new();
+        private Dictionary<string, DateTime> LastProcessTimes { get; } = [];
 
         public async Task ProcessWebhookAsync(string webhookBody)
         {
@@ -58,7 +48,7 @@ namespace DockerRegistryUI.Controllers
 
                 LastProcessTimes[repositoryName] = currentTime;
 
-                await WebhooksService.HandleEventAsync(evt);
+                await webhooksService.HandleEventAsync(evt);
             }
         }
 
@@ -67,17 +57,20 @@ namespace DockerRegistryUI.Controllers
             await Task.Run(async () =>
             {
                 Console.WriteLine("Webhooks Background Service started");
-                ServiceStatusTracker.UpdateStatus(nameof(WebhooksBackgroundService), ServiceStatus.Running);
                 try
                 {
                     while (!stoppingToken.IsCancellationRequested)
                     {
                         try
                         {
-                            while (Queue.TryDequeue(out var webhookBody))
+                            serviceStatusTracker.UpdateStatus(nameof(WebhooksBackgroundService), ServiceStatus.Running);
+
+                            while (queue.TryDequeue(out var webhookBody))
                             {
                                 try
                                 {
+                                    serviceStatusTracker.UpdateStatus(nameof(WebhooksBackgroundService), ServiceStatus.Running);
+
                                     Console.WriteLine("Dequeued webhook. Processing it.");
 
                                     await ProcessWebhookAsync(webhookBody);
@@ -99,7 +92,7 @@ namespace DockerRegistryUI.Controllers
                 finally
                 {
                     Console.WriteLine("Webhooks Background Service exited.");
-                    ServiceStatusTracker.UpdateStatus(nameof(WebhooksBackgroundService), ServiceStatus.Stopped);
+                    serviceStatusTracker.UpdateStatus(nameof(WebhooksBackgroundService), ServiceStatus.Stopped);
                 }
             }, stoppingToken);
         }
