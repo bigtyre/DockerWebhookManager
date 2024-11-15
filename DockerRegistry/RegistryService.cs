@@ -34,6 +34,37 @@ public class RegistryService(RegistrySettings settings)
         return client;
     }
 
+    public async Task<ManifestV2> GetManifestV2Async(string repositoryName, string tag, CancellationToken cancellationToken = default)
+    {
+        var httpClient = CreateHttpClient();
+        var url = $"{repositoryName}/manifests/{tag}";
+
+        // Set the Accept header for schema version 2
+        var request = new HttpRequestMessage(HttpMethod.Get, url);
+        request.Headers.Accept.Add(new MediaTypeWithQualityHeaderValue("application/vnd.docker.distribution.manifest.v2+json"));
+
+        // Send request and handle response
+        HttpResponseMessage response = await httpClient.SendAsync(request, cancellationToken);
+
+        if (!response.IsSuccessStatusCode)
+        {
+            var responseCode = response.StatusCode;
+            throw new HttpRequestException($"Failed to get manifest. Response code was {responseCode}.");
+        }
+
+        // Deserialize response content into ManifestV2
+        string content = await response.Content.ReadAsStringAsync(cancellationToken);
+        var manifest = JsonConvert.DeserializeObject<ManifestV2>(content);
+
+        if (manifest is null)
+        {
+            throw new InvalidOperationException("Failed to deserialize the manifest.");
+        }
+
+        return manifest;
+    }
+
+
     public async Task<List<string>> GetTagsAsync(string repositoryName)
     {
         var httpClient = CreateHttpClient();
@@ -89,10 +120,33 @@ public class RegistryService(RegistrySettings settings)
             {
                 Repositories = new List<string>()
             }
-        ) ?? throw new Exception("Failed to deserialize respone.");
+        ) ?? throw new Exception("Failed to deserialize response.");
 
         var repositories = responseObject.Repositories.Select(s => new DockerRepository(s)).ToList();
 
         return repositories;
     }
+}
+
+
+public record ManifestV2
+{
+    public int SchemaVersion { get; init; }
+    public string MediaType { get; init; }
+    public Config Config { get; init; }
+    public List<Layer> Layers { get; init; }
+}
+
+public record Config
+{
+    public string MediaType { get; init; }
+    public long Size { get; init; }
+    public string Digest { get; init; }
+}
+
+public record Layer
+{
+    public string MediaType { get; init; }
+    public long Size { get; init; }
+    public string Digest { get; init; }
 }

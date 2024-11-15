@@ -1,6 +1,7 @@
 using BigTyre;
 using BigTyre.Configuration;
 using Dapper;
+using DockerRegistry;
 using DockerRegistry.Configuration;
 using DockerRegistryUI;
 using DockerRegistryUI.BackgroundServiceStatus;

@@ -1,4 +1,5 @@
-﻿using DockerRegistryUI.Data;
+﻿using DockerRegistry;
+using DockerRegistryUI.Data;
 using Microsoft.AspNetCore.Components;
 using TrivyAPIClient;
 
