@@ -10,6 +10,7 @@ using DockerRegistryUI.Data;
 using DockerRegistryUI.Pages;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
+using Prometheus;
 using TrivyAPIClient;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -54,14 +55,21 @@ services.AddSingleton<VulnerabilityDbContextFactory>();
 services.AddSingleton<IBackgroundServiceStatusTracker, BackgroundServiceStatusTracker>();
 
 services.AddHostedService<WebhooksBackgroundService>();
+services.AddHostedService<VulnerabilityMetricsService>();
+
+services.AddTransient<VulnerabilityScanningService>();
+services.AddTransient<VulnerabilityMetricsService>();
+
 services.AddHostedService(svc =>
 {
     var scope = svc.CreateScope();
-    return new VulnerabilityScanningService(
-        scope.ServiceProvider.GetRequiredService<ILogger<VulnerabilityScanningService>>(),
-        scope.ServiceProvider.GetRequiredService<RegistryService>(),
-        scope.ServiceProvider.GetRequiredService<VulnerabilityScanner>()
-    );
+    return scope.ServiceProvider.GetRequiredService<VulnerabilityScanningService>();
+});
+
+services.AddHostedService(svc =>
+{
+    var scope = svc.CreateScope();
+    return scope.ServiceProvider.GetRequiredService<VulnerabilityMetricsService>();
 });
 
 services.AddHealthChecks().AddCheck<BackgroundServiceHealthCheck>("background_service_health_check");
@@ -86,6 +94,8 @@ app.UsePathBase(basePath);
 app.UseStaticFiles();
 
 app.UseRouting();
+app.UseMetricServer();
+
 
 // Map health checks to a specific endpoint
 app.MapHealthChecks("/health");

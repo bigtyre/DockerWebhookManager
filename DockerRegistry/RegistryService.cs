@@ -56,12 +56,7 @@ public class RegistryService(RegistrySettings settings)
         string content = await response.Content.ReadAsStringAsync(cancellationToken);
         var manifest = JsonConvert.DeserializeObject<ManifestV2>(content);
 
-        if (manifest is null)
-        {
-            throw new InvalidOperationException("Failed to deserialize the manifest.");
-        }
-
-        return manifest;
+        return manifest is null ? throw new InvalidOperationException("Failed to deserialize the manifest.") : manifest;
     }
 
 
@@ -99,11 +94,11 @@ public class RegistryService(RegistrySettings settings)
         }
     }
 
-    public async Task<List<DockerRepository>> GetRepositoriesAsync()
+    public async Task<List<DockerRepository>> GetRepositoriesAsync(CancellationToken cancellationToken = default)
     {
         var httpClient = CreateHttpClient();
 
-        HttpResponseMessage response = await httpClient.GetAsync("_catalog");
+        HttpResponseMessage response = await httpClient.GetAsync("_catalog", cancellationToken);
         
         if (response.IsSuccessStatusCode is false)
         {
@@ -112,7 +107,7 @@ public class RegistryService(RegistrySettings settings)
         }
 
         // Read the response content
-        string textContent = await response.Content.ReadAsStringAsync();
+        string textContent = await response.Content.ReadAsStringAsync(cancellationToken);
 
         var responseObject = JsonConvert.DeserializeAnonymousType(
             textContent,
